@@ -1,5 +1,7 @@
 package thirtyvirus.perkagapples;
 
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import thirtyvirus.perkagapples.events.UberEvent;
 import thirtyvirus.perkagapples.items.*;
 import org.bukkit.Bukkit;
@@ -17,7 +19,8 @@ import java.util.*;
 
 public class PerkAGapples extends JavaPlugin {
 
-    public static Map<Player, ArrayList<String>> perkedPlayers = new HashMap<>();
+    private static Map<Player, ArrayList<String>> perkedPlayers = new HashMap<>();
+    private static int activePerkaColas = 0;
 
     public void onEnable() {
 
@@ -28,6 +31,11 @@ public class PerkAGapples extends JavaPlugin {
             return;
         }
 
+        // schedule repeating task for processing Perk-A-Gapples active effects
+        // in ticks
+        int activePerkaColasDelay = 5;
+        activePerkaColas = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PerkAGapples::activeEffects, activePerkaColasDelay, activePerkaColasDelay);
+
         // register thirtyvirus.perkagapples.events and UberItems
         registerEvents();
         registerUberMaterials();
@@ -37,6 +45,9 @@ public class PerkAGapples extends JavaPlugin {
         getLogger().info(getDescription().getName() + " V: " + getDescription().getVersion() + " has been enabled");
     }
     public void onDisable() {
+        // cancel scheduled tasks
+        Bukkit.getScheduler().cancelTask(activePerkaColas);
+
         // posts exit message in chat
         getLogger().info(getDescription().getName() + " V: " + getDescription().getVersion() + " has been disabled");
     }
@@ -159,6 +170,14 @@ public class PerkAGapples extends JavaPlugin {
                         new ItemStack(Material.SPIDER_EYE)), false, 1 )));
     }
     private void registerUberMaterials() { }
+
+    private static void activeEffects() {
+        for (Player player : perkedPlayers.keySet()) {
+            if (is_player_perked(player, "stamin_up")) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, 1));
+            }
+        }
+    }
 
     // add perk to a player
     public static void perk_a_player(Player player, String perk) {
