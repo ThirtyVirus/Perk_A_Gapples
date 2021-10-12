@@ -1,18 +1,22 @@
 package thirtyvirus.perkagapples.events;
 
 import org.bukkit.*;
-import org.bukkit.entity.Arrow;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.TNTPrimed;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 import thirtyvirus.perkagapples.PerkAGapples;
+import thirtyvirus.perkagapples.items.vulture_aid;
+import thirtyvirus.perkagapples.items.web_grenade;
 import thirtyvirus.uber.UberItem;
+import thirtyvirus.uber.UberItems;
 import thirtyvirus.uber.helpers.Utilities;
 
 import java.util.Random;
@@ -44,6 +48,15 @@ public class UberEvent implements Listener {
                 return;
         }
 
+        if (uber.getClass().getSimpleName().equals("speed_cola")) {
+            AttributeInstance attribute = player.getAttribute(Attribute.GENERIC_ATTACK_SPEED);
+           double baseValue = attribute.getBaseValue();
+
+            if (baseValue != 16) {
+                attribute.setBaseValue(16); player.saveData();
+            }
+        }
+
         Bukkit.getLogger().info("" + PerkAGapples.what_perks_player(player).toString());
 
         // finalize gapple consumption, disable vanilla effects
@@ -54,9 +67,27 @@ public class UberEvent implements Listener {
     }
 
     @EventHandler
+    private void onPlayerKillEntity(EntityDeathEvent event) {
+        if (!(event.getEntity().getLastDamageCause() instanceof EntityDamageByEntityEvent)) return;
+        if (event.getEntity().getKiller() == null) return;
+
+        // give player random extra goodies when killing mobs if using vulture aid
+        Player player = (Player)event.getEntity().getKiller();
+        if (PerkAGapples.is_player_perked(player, "vulture_aid")) {
+            event.getDrops().addAll(vulture_aid.dropRandomGoodies());
+        }
+
+    }
+
+    @EventHandler
     private void onPlayerDamaged(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         Player player = (Player)event.getEntity();
+
+        // half all incoming damage if using Juggernog
+        if (PerkAGapples.is_player_perked(player, "juggernog")) {
+            event.setDamage(event.getDamage() / 2);
+        }
 
         // remove explosion damage if using PhD Flopper
         if (event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
@@ -87,6 +118,38 @@ public class UberEvent implements Listener {
                 target.damage(event.getFinalDamage());
             }, 20);
         }
+
+        // small chance to activate web grenade ability if using widow's wine
+        if (PerkAGapples.is_player_perked(player, "widows_wine")) {
+            if (rand.nextInt(10) > 8) web_grenade.webExplosion(target.getLocation());
+        }
+
+        AttributeInstance attribute = player.getAttribute(Attribute.GENERIC_ATTACK_SPEED);
+        double baseValue = attribute.getBaseValue();
+
+        // disable hit cooldown if using speed cola, re-enable if not
+        if (PerkAGapples.is_player_perked(player, "speed_cola")) {
+            if (baseValue != 16) { attribute.setBaseValue(16); player.saveData(); }
+        } else { if (baseValue != 4) { attribute.setBaseValue(4); player.saveData(); } }
+    }
+
+    @EventHandler
+    private void onPlayerGetAttacked(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof LivingEntity)) return;
+        Player player = (Player)event.getEntity();
+        LivingEntity attacker = (LivingEntity)event.getDamager();
+
+        // give slowness and hurt enemies who hit you if using widow's wine
+        if (PerkAGapples.is_player_perked(player, "widows_wine")) {
+
+            ItemStack webGrenade = UberItems.getItem("web_grenade").makeItem(1);
+            if (player.getInventory().containsAtLeast(webGrenade, 1)) {
+                player.getInventory().remove(webGrenade);
+                web_grenade.webExplosion(attacker.getLocation());
+            }
+
+        }
+
     }
 
     @EventHandler
@@ -109,7 +172,7 @@ public class UberEvent implements Listener {
 
         // give player 70% chance not to lose hunger if using stamin-up
         if (PerkAGapples.is_player_perked(player, "stamin_up")) {
-            if (rand.nextInt(10) > 3) { event.setCancelled(true); Bukkit.getLogger().info("cancelled hunger loss!"); }
+            if (rand.nextInt(10) > 3) { event.setCancelled(true); }
         }
     }
 
@@ -122,9 +185,25 @@ public class UberEvent implements Listener {
     }
 
     @EventHandler
+    private void onBlockLand(EntityChangeBlockEvent event) {
+        if (!(event.getEntity() instanceof FallingBlock)) return;
+        FallingBlock block = (FallingBlock)event.getEntity();
+
+        // make sure that thrown web grenades don't get placed as blocks
+        if (Utilities.getEntityTag(block, "webgrenade").equals("asd")) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     private void onPlayerDie(PlayerDeathEvent event) {
         // remove perks when a player dies
         PerkAGapples.unperk_a_player(event.getEntity());
+
+        // verify that the speedcola boost is gone
+        AttributeInstance attribute = event.getEntity().getAttribute(Attribute.GENERIC_ATTACK_SPEED);
+        double baseValue = attribute.getBaseValue();
+        if (baseValue != 4) { attribute.setBaseValue(4); event.getEntity().saveData(); }
     }
 
     private void shootAdditionalArrow(EntityShootBowEvent event, Player player) {

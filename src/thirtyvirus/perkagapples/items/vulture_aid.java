@@ -1,6 +1,6 @@
 package thirtyvirus.perkagapples.items;
 
-import java.util.List;
+import java.util.*;
 
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -16,6 +16,11 @@ import thirtyvirus.uber.UberItem;
 import thirtyvirus.uber.helpers.*;
 
 public class vulture_aid extends UberItem {
+
+    // list of possible goodies to get from Vulture Aid when killing mobs
+    private static final Set<Material> GOODIES = EnumSet.of(Material.ARROW, Material.APPLE, Material.COOKIE);
+
+    private static Random rand = new Random();
 
     public vulture_aid(Material material, String name, UberRarity rarity, boolean stackable, boolean oneTimeUse, boolean hasActiveEffect, List<UberAbility> abilities, UberCraftingRecipe craftingRecipe) {
         super(material, name, rarity, stackable, oneTimeUse, hasActiveEffect, abilities, craftingRecipe);
@@ -38,4 +43,13 @@ public class vulture_aid extends UberItem {
     public boolean breakBlockAction(Player player, BlockBreakEvent event, Block block, ItemStack item) { return false; }
     public boolean clickedInInventoryAction(Player player, InventoryClickEvent event, ItemStack item, ItemStack addition) { return false; }
     public boolean activeEffect(Player player, ItemStack item) { return false; }
+
+    public static List<ItemStack> dropRandomGoodies() {
+        List<ItemStack> drops = new ArrayList<>();
+        for (Material m : GOODIES) {
+            if (rand.nextInt(10) > 8) drops.add(new ItemStack(m, rand.nextInt(3) + 1));
+        }
+
+        return drops;
+    }
 }

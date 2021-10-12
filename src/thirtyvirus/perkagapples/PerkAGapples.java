@@ -1,5 +1,7 @@
 package thirtyvirus.perkagapples;
 
+import org.bukkit.ChatColor;
+import org.bukkit.entity.Entity;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import thirtyvirus.perkagapples.events.UberEvent;
@@ -21,6 +23,7 @@ public class PerkAGapples extends JavaPlugin {
 
     private static Map<Player, ArrayList<String>> perkedPlayers = new HashMap<>();
     private static int activePerkaColas = 0;
+    private static int timeUntilWeb = 120;
 
     public void onEnable() {
 
@@ -168,13 +171,41 @@ public class PerkAGapples extends JavaPlugin {
                         new ItemStack(Material.FERMENTED_SPIDER_EYE),
                         new ItemStack(Material.GOLD_INGOT),
                         new ItemStack(Material.SPIDER_EYE)), false, 1 )));
+
+        UberItems.putItem("web_grenade", new web_grenade(Material.COBWEB, "Web Grenade", UberRarity.UNCOMMON,
+                true, true, false,
+                Collections.singletonList(new UberAbility("Web Explosion", AbilityType.RIGHT_CLICK, "Launch an explosive that hurts enemies in a radius and slows them down for " + ChatColor.GREEN + "20s" + ChatColor.GRAY + ".")),
+                null));
     }
     private void registerUberMaterials() { }
 
     private static void activeEffects() {
         for (Player player : perkedPlayers.keySet()) {
+
+            // maintain player's higher speed if using stamin-up
             if (is_player_perked(player, "stamin_up")) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, 1));
+            }
+
+            // make nearby entities glow for a player if using vulture aid
+            // TODO make for player only, expires once out of range
+            // TODO make random mobs to kill for temporary invisibility
+            if (is_player_perked(player, "vulture_aid")) {
+                for (Entity e : player.getNearbyEntities(20,20,20)) {
+                    e.setGlowing(true);
+                }
+            }
+
+            // process giving the player new web grenades if using widows wine
+            if (is_player_perked(player, "widows_wine")) {
+                if (timeUntilWeb <= 0) {
+                    ItemStack webGrenade = UberItems.getItem("web_grenade").makeItem(1);
+                    if (!(player.getInventory().firstEmpty() == -1 && !player.getInventory().containsAtLeast(webGrenade, 1))) {
+                        if (!player.getInventory().containsAtLeast(webGrenade, 8)) player.getInventory().addItem(webGrenade);
+                    }
+                    timeUntilWeb = 120;
+                }
+                else timeUntilWeb--;
             }
         }
     }
