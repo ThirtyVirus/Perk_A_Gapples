@@ -1,5 +1,7 @@
 package thirtyvirus.perkagapples;
 
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Entity;
 import org.bukkit.potion.PotionEffect;
@@ -12,10 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import thirtyvirus.uber.UberItems;
-import thirtyvirus.uber.helpers.AbilityType;
-import thirtyvirus.uber.helpers.UberAbility;
-import thirtyvirus.uber.helpers.UberCraftingRecipe;
-import thirtyvirus.uber.helpers.UberRarity;
+import thirtyvirus.uber.helpers.*;
 
 import java.util.*;
 
@@ -24,6 +23,10 @@ public class PerkAGapples extends JavaPlugin {
     private static Map<Player, ArrayList<String>> perkedPlayers = new HashMap<>();
     private static int activePerkaColas = 0;
     private static int timeUntilWeb = 120;
+
+    // TODO Add actionbar [#] [$] to show active perks
+    //  verify that all perks act like in COD
+    //  add Tombstone, Deadshot Daiquiri, Mule Kick, Electric Cherry, Der Wunderfizz
 
     public void onEnable() {
 
@@ -39,7 +42,45 @@ public class PerkAGapples extends JavaPlugin {
         int activePerkaColasDelay = 5;
         activePerkaColas = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PerkAGapples::activeEffects, activePerkaColasDelay, activePerkaColasDelay);
 
-        // register thirtyvirus.perkagapples.events and UberItems
+        // process actionbar updates for which perks are active
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
+            for (Player player : perkedPlayers.keySet()) {
+
+                StringBuilder perks = new StringBuilder();
+                for (String perk : perkedPlayers.get(player)) {
+                    switch (perk) {
+                        case "double_tap":
+                            perks.append(ChatColor.GOLD).append("[☣] ");
+                            break;
+                        case "juggernog":
+                            perks.append(ChatColor.RED).append("[❤] ");
+                            break;
+                        case "phd_flopper":
+                            perks.append(ChatColor.LIGHT_PURPLE).append("[☢] ");
+                            break;
+                        case "quick_revive":
+                            perks.append(ChatColor.AQUA).append("[☺] ");
+                            break;
+                        case "speed_cola":
+                            perks.append(ChatColor.GREEN).append("[♨] ");
+                            break;
+                        case "stamin_up":
+                            perks.append(ChatColor.YELLOW).append("[∞] ");
+                            break;
+                        case "vulture_aid":
+                            perks.append(ChatColor.DARK_RED).append("[♣] ");
+                            break;
+                        case "widows_wine":
+                            perks.append(ChatColor.BLACK).append("[☣] ");
+                            break;
+                    }
+                }
+
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(perks.toString()));
+            }
+        }, 10, 10);
+
+        // register perkagapples.events and UberItems
         registerEvents();
         registerUberMaterials();
         registerUberItems();
